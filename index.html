@@ -26,31 +26,61 @@
         }
 
         .connection-setup {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
-
-        .ip-input-container {
             background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
+            backdrop-filter: blur(15px);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
         }
 
-        .ip-input {
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid transparent;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-btn.active {
+            background: #BD9B60;
+            border-color: #BD9B60;
+        }
+
+        .mode-btn:hover {
+            background: rgba(189, 155, 96, 0.7);
+        }
+
+        .input-section {
+            margin: 20px 0;
+        }
+
+        .input-section.hidden {
+            display: none;
+        }
+
+        .game-code-input, .ip-input {
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.3);
             color: white;
-            padding: 8px 12px;
-            border-radius: 5px;
-            width: 180px;
-            margin-right: 10px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            width: 200px;
+            margin-right: 15px;
+            font-size: 1.1rem;
+            text-align: center;
         }
 
-        .ip-input::placeholder {
+        .game-code-input::placeholder, .ip-input::placeholder {
             color: rgba(255, 255, 255, 0.7);
         }
 
@@ -58,18 +88,24 @@
             background: #155432;
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
+            padding: 12px 24px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .connect-btn:hover {
+            background: #1a5f39;
         }
 
         .connection-status {
-            padding: 10px 20px;
+            padding: 15px 25px;
             border-radius: 25px;
             font-weight: bold;
             text-align: center;
             backdrop-filter: blur(10px);
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .connected {
@@ -304,16 +340,14 @@
                 font-size: 3rem;
             }
 
-            .connection-setup {
-                position: relative;
-                top: auto;
-                right: auto;
-                margin-bottom: 20px;
+            .mode-selector {
+                flex-direction: column;
+                align-items: center;
             }
 
-            .ip-input {
+            .game-code-input, .ip-input {
                 width: 100%;
-                margin-bottom: 10px;
+                margin-bottom: 15px;
                 margin-right: 0;
             }
         }
@@ -321,98 +355,196 @@
 </head>
 <body>
     <div class="container">
-        <div class="connection-setup">
-            <div class="ip-input-container">
-                <input 
-                    type="text" 
-                    class="ip-input" 
-                    id="ipAddress" 
-                    placeholder="iPad IP (e.g. 192.168.1.100)"
-                    value=""
-                >
-                <button class="connect-btn" onclick="connectToServer()">Connect</button>
-            </div>
-        </div>
-
         <div class="header">
             <h1>🏈 Football Analytics Live</h1>
         </div>
 
+        <div class="connection-setup">
+            <div class="mode-selector">
+                <button class="mode-btn active" onclick="switchMode('firebase')">🌐 Internet (Game Code)</button>
+                <button class="mode-btn" onclick="switchMode('local')">📶 Local WiFi (IP Address)</button>
+            </div>
+
+            <div id="firebaseSection" class="input-section">
+                <input 
+                    type="text" 
+                    class="game-code-input" 
+                    id="gameCode" 
+                    placeholder="Game Code (123456)"
+                    maxlength="6"
+                >
+                <button class="connect-btn" onclick="connectToFirebase()">Connect to Game</button>
+                <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+                    Enter the 6-digit game code from the pressbox iPad
+                </p>
+            </div>
+
+            <div id="localSection" class="input-section hidden">
+                <input 
+                    type="text" 
+                    class="ip-input" 
+                    id="ipAddress" 
+                    placeholder="iPad IP (192.168.1.100)"
+                >
+                <button class="connect-btn" onclick="connectToLocal()">Connect to iPad</button>
+                <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+                    Both devices must be on the same WiFi network
+                </p>
+            </div>
+        </div>
+
         <div id="connectionStatus" class="connection-status disconnected">
-            Enter iPad IP address above and click Connect
+            Choose connection method above
         </div>
 
         <div id="content" class="loading pulse">
             <div>📱 Waiting for game data...</div>
             <div style="font-size: 1rem; margin-top: 10px; opacity: 0.7;">
-                Make sure your iPad is broadcasting and both devices are on the same WiFi
+                Connect using a game code or IP address to view live stats
             </div>
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
     <script>
+        // Firebase Configuration (you'll need to replace with your config)
+        const firebaseConfig = {
+            apiKey: "your-api-key",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+            projectId: "your-project-id"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
         class FootballBroadcast {
             constructor() {
                 this.ws = null;
                 this.gameData = null;
+                this.currentMode = 'firebase';
+                this.gameRef = null;
                 this.reconnectAttempts = 0;
                 this.maxReconnectAttempts = 10;
-                this.reconnectDelay = 3000;
-                this.ipAddress = '';
                 
-                // Load saved IP from localStorage
-                const savedIP = localStorage.getItem('ipadIP');
-                if (savedIP) {
-                    document.getElementById('ipAddress').value = savedIP;
+                // Check URL parameters for game code
+                const urlParams = new URLSearchParams(window.location.search);
+                const gameCode = urlParams.get('game');
+                if (gameCode) {
+                    document.getElementById('gameCode').value = gameCode;
                 }
             }
 
-            connect(ipAddress) {
-                if (!ipAddress || !this.isValidIP(ipAddress)) {
+            switchMode(mode) {
+                this.currentMode = mode;
+                
+                // Update UI
+                document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                if (mode === 'firebase') {
+                    document.getElementById('firebaseSection').classList.remove('hidden');
+                    document.getElementById('localSection').classList.add('hidden');
+                } else {
+                    document.getElementById('firebaseSection').classList.add('hidden');
+                    document.getElementById('localSection').classList.remove('hidden');
+                }
+
+                // Disconnect current connection
+                this.disconnect();
+            }
+
+            connectToFirebase() {
+                const gameCode = document.getElementById('gameCode').value.trim();
+                
+                if (!gameCode || gameCode.length !== 6) {
+                    this.updateConnectionStatus('❌ Please enter a valid 6-digit game code', 'disconnected');
+                    return;
+                }
+
+                this.updateConnectionStatus('🔄 Connecting to game...', 'connecting');
+
+                this.gameRef = database.ref(`games/${gameCode}`);
+                
+                // Check if game exists
+                this.gameRef.child('status').once('value', (snapshot) => {
+                    if (!snapshot.exists()) {
+                        this.updateConnectionStatus('❌ Game code not found', 'disconnected');
+                        return;
+                    }
+
+                    // Listen for game data updates
+                    this.gameRef.child('gameData').on('value', (snapshot) => {
+                        if (snapshot.exists()) {
+                            this.gameData = snapshot.val();
+                            this.updateDisplay();
+                            this.updateConnectionStatus('✅ Connected to live game', 'connected');
+                        }
+                    });
+
+                    // Listen for game status
+                    this.gameRef.child('status').on('value', (snapshot) => {
+                        const status = snapshot.val();
+                        if (status === 'ended') {
+                            this.updateConnectionStatus('⚫ Game has ended', 'disconnected');
+                        }
+                    });
+
+                }, (error) => {
+                    this.updateConnectionStatus('❌ Connection error', 'disconnected');
+                    console.error('Firebase error:', error);
+                });
+            }
+
+            connectToLocal() {
+                const ipAddress = document.getElementById('ipAddress').value.trim();
+                
+                if (!this.isValidIP(ipAddress)) {
                     this.updateConnectionStatus('❌ Please enter a valid IP address', 'disconnected');
                     return;
                 }
 
-                this.ipAddress = ipAddress;
-                localStorage.setItem('ipadIP', ipAddress);
-
-                this.updateConnectionStatus('🔄 Connecting...', 'connecting');
+                this.updateConnectionStatus('🔄 Connecting to iPad...', 'connecting');
 
                 try {
-                    // Close existing connection
                     if (this.ws) {
                         this.ws.close();
                     }
 
                     const wsUrl = `ws://${ipAddress}:8080`;
-                    console.log('Connecting to:', wsUrl);
-                    
                     this.ws = new WebSocket(wsUrl);
                     
-                    this.ws.onopen = () => {
-                        console.log('WebSocket connected');
-                        this.onConnect();
-                    };
-                    
+                    this.ws.onopen = () => this.updateConnectionStatus('✅ Connected to iPad', 'connected');
                     this.ws.onmessage = (event) => {
-                        console.log('Received data:', event.data);
-                        this.onMessage(event);
+                        try {
+                            this.gameData = JSON.parse(event.data);
+                            this.updateDisplay();
+                        } catch (error) {
+                            console.error('Error parsing data:', error);
+                        }
                     };
-                    
-                    this.ws.onclose = (event) => {
-                        console.log('WebSocket closed:', event.code, event.reason);
-                        this.onDisconnect();
-                    };
-                    
-                    this.ws.onerror = (error) => {
-                        console.error('WebSocket error:', error);
-                        this.onError();
-                    };
+                    this.ws.onclose = () => this.updateConnectionStatus('🔴 iPad connection lost', 'disconnected');
+                    this.ws.onerror = () => this.updateConnectionStatus('❌ Connection failed', 'disconnected');
 
                 } catch (error) {
-                    console.error('Connection failed:', error);
                     this.updateConnectionStatus('❌ Connection failed', 'disconnected');
                 }
+            }
+
+            disconnect() {
+                if (this.ws) {
+                    this.ws.close();
+                    this.ws = null;
+                }
+                if (this.gameRef) {
+                    this.gameRef.off();
+                    this.gameRef = null;
+                }
+                this.updateConnectionStatus('Disconnected', 'disconnected');
             }
 
             isValidIP(ip) {
@@ -423,44 +555,6 @@
                     const num = parseInt(octet);
                     return num >= 0 && num <= 255;
                 });
-            }
-
-            onConnect() {
-                this.reconnectAttempts = 0;
-                this.updateConnectionStatus('✅ Connected to game feed', 'connected');
-            }
-
-            onMessage(event) {
-                try {
-                    this.gameData = JSON.parse(event.data);
-                    this.updateDisplay();
-                } catch (error) {
-                    console.error('Error parsing game data:', error);
-                }
-            }
-
-            onDisconnect() {
-                this.updateConnectionStatus('🔴 Disconnected - Attempting to reconnect...', 'disconnected');
-                this.attemptReconnect();
-            }
-
-            onError() {
-                this.updateConnectionStatus('❌ Connection error - Check IP and WiFi', 'disconnected');
-            }
-
-            attemptReconnect() {
-                if (this.reconnectAttempts < this.maxReconnectAttempts && this.ipAddress) {
-                    this.reconnectAttempts++;
-                    console.log(`Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-                    
-                    setTimeout(() => {
-                        if (this.ipAddress) {
-                            this.connect(this.ipAddress);
-                        }
-                    }, this.reconnectDelay);
-                } else {
-                    this.updateConnectionStatus('❌ Connection lost - Click Connect to retry', 'disconnected');
-                }
             }
 
             updateConnectionStatus(message, status) {
@@ -567,26 +661,27 @@
         // Global instance
         let broadcast = new FootballBroadcast();
 
-        // Connect button handler
-        function connectToServer() {
-            const ipInput = document.getElementById('ipAddress');
-            const ipAddress = ipInput.value.trim();
-            broadcast.connect(ipAddress);
+        // Global functions for buttons
+        function switchMode(mode) {
+            broadcast.switchMode(mode);
         }
 
-        // Allow Enter key in IP input
-        document.getElementById('ipAddress').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                connectToServer();
-            }
-        });
+        function connectToFirebase() {
+            broadcast.connectToFirebase();
+        }
 
-        // Auto-connect if IP is saved
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedIP = localStorage.getItem('ipadIP');
-            if (savedIP) {
-                // Optional: Auto-connect to saved IP
-                // broadcast.connect(savedIP);
+        function connectToLocal() {
+            broadcast.connectToLocal();
+        }
+
+        // Allow Enter key in inputs
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (broadcast.currentMode === 'firebase') {
+                    connectToFirebase();
+                } else {
+                    connectToLocal();
+                }
             }
         });
     </script>
