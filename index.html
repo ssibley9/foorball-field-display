@@ -411,12 +411,20 @@
 
     <script>
         // Firebase Configuration (you'll need to replace with your config)
-        const firebaseConfig = {
-            apiKey: "your-api-key",
-            authDomain: "your-project.firebaseapp.com",
-            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-            projectId: "your-project-id"
-        };
+const firebaseConfig = {
+  apiKey: "AIzaSyCsOG4PUqf-uJFH--eLVH3mc4mZqgK0jjk",
+  authDomain: "football-broadcasting.firebaseapp.com",
+  databaseURL: "https://football-broadcasting-default-rtdb.firebaseio.com",
+  projectId: "football-broadcasting",
+  storageBucket: "football-broadcasting.firebasestorage.app",
+  messagingSenderId: "64235598993",
+  appId: "1:64235598993:web:7dbe6d98c8ddfaeb453b30",
+  measurementId: "G-MK25MZCJZ9"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
